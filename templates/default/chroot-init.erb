@@ -1,0 +1,131 @@
+#!/bin/sh
+#
+#       /etc/rc.d/init.d/docker2host-<%=@name%>
+#
+#       Daemon for docker2host
+#
+# chkconfig:   2345 95 95
+# description: Daemon for docker2host
+
+### BEGIN INIT INFO
+# Provides:       docker2host-<%=@name%>
+# Required-Start: $network cgconfig
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop:  0 1 6
+# Short-Description: start and stop docker2host
+# Description: Daemon for docker2host
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+prog="docker2host-<%=@name%>"
+pidfile="/var/run/$prog.pid"
+lockfile="/var/lock/subsys/$prog"
+logfile="/var/log/$prog"
+
+
+start() {
+    [ -x $exec ] || exit 5
+
+    if ! [ -f $pidfile ]; then
+
+	echo "Mounting chroot directories"
+	mount -t proc none /var/lib/container/<%=@name%>/proc > /dev/null &
+	mount -o bind /tmp /var/lib/container/<%=@name%>/tmp > /dev/null &
+<% @binds.each do |bind| %>
+	mount -o bind <%=bind%> /var/lib/container/<%=@name%><%=bind%> > /dev/null &
+<% end -%>
+	mount -o bind /etc/resolv.conf /var/lib/container/myhack/etc/resolv.conf
+        printf "Starting docker2host $prog:\t"
+        echo "\n$(date)\n" >> $logfile
+	chroot /var/lib/container/<%=@name%> su - <%=@user%> -c "<%=@initcmd%>" &
+        pid=$!
+	echo $pid > $pidfile
+        touch $lockfile
+        success
+        echo
+    else
+        failure
+        echo
+        printf "$pidfile still exists...\n"
+        exit 7
+    fi
+}
+
+stop() {
+    echo -n $"Stopping docker2host $prog: "
+    killproc -p $pidfile $prog
+    rm -f $pidfile
+
+    echo "Unmounting chroot directories"
+    sleep 2
+    umount /var/lib/container/<%=@name%>/proc > /dev/null &
+    umount /var/lib/container/<%=@name%>/tmp > /dev/null &
+<% @binds.each do |bind| %>
+    umount /var/lib/container/<%=@name%><%=bind%> > /dev/null &
+<% end -%>
+    umount /var/lib/container/myhack/etc/resolv.conf
+
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    restart
+}
+
+force_reload() {
+    restart
+}
+
+rh_status() {
+    status -p $pidfile $prog
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart}"
+        exit 2
+esac
+
+exit $?
