@@ -2,7 +2,7 @@ name 'docker2host'
 maintainer 'lorieri'
 maintainer_email 'lorieri@gmail.com'
 license 'Apache 2.0'
-description 'docker2host'
+description 'Runs Docker images without Docker daemon'
 
 version '0.0.1'
 
