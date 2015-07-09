@@ -4,6 +4,7 @@ name     = node[:docker2host][:name]
 env	 = node[:docker2host][:env]
 version  = node[:docker2host][:version]
 registry = node[:docker2host][:registry] 
+image    = node[:docker2host][:image]
 
 directory "/var/lib/container/#{name}" do
 	action :create
@@ -14,7 +15,7 @@ directory "/var/lib/container/#{name}" do
 end
 
 execute "create_container" do
-	command "docker rm #{name} ;  docker create --name #{name} #{registry}#{name}:#{version}"
+	command "docker rm #{name} ;  docker create --name #{name} #{registry}#{image}:#{version}"
 	action :run
 end
 
